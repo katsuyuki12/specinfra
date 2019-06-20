@@ -17,7 +17,7 @@ class Specinfra::Command::Aix::Base::File < Specinfra::Command::Base::File
     end
 
     def check_is_mounted(path)
-      "mount | grep -w -- '#{escape(path)}'"
+      "mount | grep -e '[ ]#{escape(path)}[ ]'"
     end
 
     def check_is_linked_to(link, target)
