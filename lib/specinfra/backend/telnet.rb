@@ -74,27 +74,25 @@ module Specinfra
           set_config(:telnet, create_telnet)
         end
         telnet = get_config(:telnet)
+        magic = (Time.new.to_f*1000).to_i
         re = [] 
         p '[TRACE<S>]' + command if get_config(:trace) 
         unless telnet.nil?
           unless sudo?
-            re = telnet.cmd( "#{command}; echo $?" ).split("\n")[0..-2]
+            re = telnet.cmd( "String" => "#{command}; echo $?; echo #{magic}", "Match" => /^#{magic}$/n ).split("\n")[0..-3]
           else 
-            re = telnet.cmd( "String" => "#{command}; echo $?", "Match" => /[$%#>:] \z/n ).split("\n")
+            re = telnet.cmd( "String" => "#{command}; echo $?; echo #{magic}", "Match" => /^#{magic}$|#{sudo_prompt}\z/n ).split("\n")
             if re.last == "#{sudo_prompt}"
               p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
               p '[TRACE<S>]' + "#{get_config(:sudo_password)}" if get_config(:trace) 
-              re = telnet.cmd( "#{get_config(:sudo_password)}" ).split("\n")[0..-2]
+              re = telnet.cmd( "String" => "#{get_config(:sudo_password)}", "Match" => /^#{magic}$/n ).split("\n")[0..-3]
             else
-              re = re[0..-2]
+              re = re[0..-3]
             end
           end
           p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
-          if re.count < 2
-            re = telnet.waitfor( /[$%#>:] \z/n ).split("\n")[0..-2]
-            p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
-          end
           exit_status = re.last.to_i
+          p 'exit-status: ' + re.last if get_config(:trace)
           stdout_data = re[1..-2].join("\n") + "\n"
         else
           abort "FAILED: Telnet login failed."
