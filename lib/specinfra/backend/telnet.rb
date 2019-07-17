@@ -82,6 +82,10 @@ module Specinfra
             re = telnet.cmd( "String" => "#{command}; echo $?; echo #{magic}", "Match" => /^#{magic}$/n ).split("\n")[0..-3]
           else 
             re = telnet.cmd( "String" => "#{command}; echo $?; echo #{magic}", "Match" => /^#{magic}$|#{sudo_prompt}\z/n ).split("\n")
+            if re.count < 2
+              re = telnet.waitfor(/^#{magic}$|#{sudo_prompt}\z/n).split("\n")[0..-3]
+              p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
+            end
             if re.last == "#{sudo_prompt}"
               p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
               p '[TRACE<S>]' + "#{get_config(:sudo_password)}" if get_config(:trace) 
@@ -101,7 +105,11 @@ module Specinfra
       end
    
       def create_telnet
-        tel = Net::Telnet.new( "Host" => get_config(:host) )
+        if get_config(:trace) 
+          tel = Net::Telnet.new( "Host" => get_config(:host), "Dump_log" => "telnet_dump.log" )
+        else 
+          tel = Net::Telnet.new( "Host" => get_config(:host) )
+        end
         tel.login( 
           "Name" => get_config(:user),
           "Password" => get_config(:pass)
