@@ -79,20 +79,23 @@ module Specinfra
         p '[TRACE<S>]' + command if get_config(:trace) 
         unless telnet.nil?
           unless sudo?
-            re = telnet.cmd( "String" => "#{command}; echo $?; echo #{magic}", "Match" => /^#{magic}$/n ).split("\n")[0..-3]
+            re = telnet.cmd( "String" => "#{command}; echo $?; echo #{magic}", "Match" => /^#{magic}$/n ).split("\n")
           else 
             re = telnet.cmd( "String" => "#{command}; echo $?; echo #{magic}", "Match" => /^#{magic}$|#{sudo_prompt}\z/n ).split("\n")
             if re.count < 2
-              re = telnet.waitfor(/^#{magic}$|#{sudo_prompt}\z/n).split("\n")[0..-3]
+              re = telnet.waitfor(/^#{magic}$|#{sudo_prompt}\z/n).split("\n")
               p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
             end
             if re.last == "#{sudo_prompt}"
               p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
               p '[TRACE<S>]' + "#{get_config(:sudo_password)}" if get_config(:trace) 
-              re = telnet.cmd( "String" => "#{get_config(:sudo_password)}", "Match" => /^#{magic}$/n ).split("\n")[0..-3]
-            else
-              re = re[0..-3]
+              re = telnet.cmd( "String" => "#{get_config(:sudo_password)}", "Match" => /^#{magic}$/n ).split("\n")
             end
+          end
+          if /^#{magic}$/.match(re.last)
+            re = re[0..-2]
+          else 
+            re = re[0..-3]
           end
           p '[TRACE<R>]' + re.join("\n") if get_config(:trace)
           exit_status = re.last.to_i
